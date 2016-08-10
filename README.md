@@ -17,15 +17,16 @@ suggest <https://github.com/lestrrat/go-jwx>.
 
 Example usage:
 
-    jti := serial.Generate()
+    gen := serial.NewGenerator()
+    jti := gen.Generate()
     
-    serial.SetSeen(jti)
+    gen.SetSeen(jti)
 
-    if serial.Seen(jti) {
+    if gen.Seen(jti) {
       // Attempt to reuse nonce
     }
 
     // Tokens we issue have an exp value of half an hour from moment of issue,
     // so every now and again we...
-    serial.ExpireHistory(time.Minute * 30)
+    gen.ExpireHistory(time.Minute * 30)
 
