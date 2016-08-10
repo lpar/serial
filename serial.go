@@ -10,39 +10,37 @@ import (
 
 type Serial int64
 
-var ratchet struct {
-	sync.RWMutex
+type Generator struct {
+	lastmutex  sync.RWMutex
 	lastSerial Serial
+	seenmutex  sync.RWMutex
+	seen       map[Serial]struct{}
 }
 
-var history struct {
-	sync.RWMutex
-	// Map with no values, just keys
-	seen map[Serial]struct{}
-}
-
-func init() {
-	history.Lock()
-	history.seen = make(map[Serial]struct{})
-	history.Unlock()
+func NewGenerator() *Generator {
+	gen := &Generator{}
+	gen.seenmutex.Lock()
+	gen.seen = make(map[Serial]struct{})
+	gen.seenmutex.Unlock()
+	return gen
 }
 
 // Seen returns a boolean to indicate whether the specified Serial value has
 // been seen. Serial values are unseen until SetSeen is called. Once they have
 // been set as seen, they remain seen until history is expired.
-func Seen(x Serial) bool {
-	history.RLock()
-	_, ok := history.seen[x]
-	history.RUnlock()
+func (g *Generator) Seen(x Serial) bool {
+	g.seenmutex.RLock()
+	_, ok := g.seen[x]
+	g.seenmutex.RUnlock()
 	return ok
 }
 
 // SetSeen flags the specified Serial value as having been seen. This can
 // then be interrogated using the Seen() method.
-func SetSeen(x Serial) {
-	history.Lock()
-	history.seen[x] = struct{}{}
-	history.Unlock()
+func (g *Generator) SetSeen(x Serial) {
+	g.seenmutex.Lock()
+	g.seen[x] = struct{}{}
+	g.seenmutex.Unlock()
 }
 
 // ExpireSeen clears the history of seen Serial values, using an age limit
@@ -51,27 +49,27 @@ func SetSeen(x Serial) {
 //
 // This function should be called periodically if you are using the Seen flag
 // feature, or else eventually your memory will fill up.
-func ExpireSeen(agelimit time.Duration) {
-	history.Lock()
+func (g *Generator) ExpireSeen(agelimit time.Duration) {
+	g.seenmutex.Lock()
 	limit := time.Now().Add(-agelimit).UnixNano()
-	for tok := range history.seen {
+	for tok := range g.seen {
 		if int64(tok) < limit {
-			delete(history.seen, tok)
+			delete(g.seen, tok)
 		}
 	}
-	history.Unlock()
+	g.seenmutex.Unlock()
 }
 
 // Generate generates a serial value based on Unix time in nanoseconds.
 // You are guaranteed to get a different value each time you call the function.
 // The value will be no earlier than the current Unix epoch time in nanoseconds.
-func Generate() Serial {
-	ratchet.Lock()
+func (g *Generator) Generate() Serial {
+	g.lastmutex.Lock()
 	id := Serial(time.Now().UnixNano())
-	for id <= ratchet.lastSerial {
+	for id <= g.lastSerial {
 		id = id + 1
 	}
-	ratchet.lastSerial = id
-	ratchet.Unlock()
+	g.lastSerial = id
+	g.lastmutex.Unlock()
 	return id
 }

@@ -5,10 +5,12 @@ import (
 	"time"
 )
 
+var gen = NewGenerator()
+
 func TestSerial(t *testing.T) {
 	for i := 0; i < 100; i++ {
-		n1 := Generate()
-		n2 := Generate()
+		n1 := gen.Generate()
+		n2 := gen.Generate()
 		if n1 == n2 {
 			t.Error("Got the same value twice!")
 		}
@@ -16,17 +18,17 @@ func TestSerial(t *testing.T) {
 }
 
 func TestOneTime(t *testing.T) {
-	n1 := Generate()
-	SetSeen(n1)
-	if !Seen(n1) {
+	n1 := gen.Generate()
+	gen.SetSeen(n1)
+	if !gen.Seen(n1) {
 		t.Error("Flagged value as seen, got 'not seen'")
 	}
-	n2 := Generate()
-	if Seen(n2) {
+	n2 := gen.Generate()
+	if gen.Seen(n2) {
 		t.Error("Got 'seen' for unflagged value")
 	}
-	ExpireSeen(time.Duration(0))
-	if Seen(n1) {
+	gen.ExpireSeen(time.Duration(0))
+	if gen.Seen(n1) {
 		t.Error("Emptied history but value was still 'seen'")
 	}
 }
@@ -38,29 +40,29 @@ func TestGC(t *testing.T) {
 	}
 	vals := make([]Serial, 100)
 	for i := 0; i < 100; i++ {
-		v := Generate()
+		v := gen.Generate()
 		vals = append(vals, v)
-		SetSeen(v)
+		gen.SetSeen(v)
 		time.Sleep(time.Second / 10)
 	}
-	before := len(history.seen)
+	before := len(gen.seen)
 	if before != 100 {
 		t.Errorf("History wrong length, expected 100 got %d", before)
 	}
 	// 5050 = 5 seconds plus a little slop to make sure we don't occasionally
 	// fail for no good reason
-	ExpireSeen(time.Millisecond * 5050)
-	after := len(history.seen)
+	gen.ExpireSeen(time.Millisecond * 5050)
+	after := len(gen.seen)
 	if after != 50 {
 		t.Errorf("History wrong length after expire, expected 50 got %d", after)
 	}
 	count := 0
 	for _, v := range vals {
-		if Seen(v) {
+		if gen.Seen(v) {
 			count++
 		}
 	}
-	if count != len(history.seen) {
+	if count != len(gen.seen) {
 		t.Errorf("History had wrong number of values expected %d got %d", count, after)
 	}
 }
