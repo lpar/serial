@@ -1,6 +1,7 @@
-// Generates unique serial numbers as 64 bit integers.
-// Supports maintaining a blacklist to prevent their reuse.
-// Ensures thread safety.
+// Package serial generates unique serial numbers as 64 bit integers.
+// It supports maintaining a blacklist to prevent their reuse and
+// ensures thread safety. Generated numbers are based on nanosecond timestamps
+// and so are most definitely not cryptographically random.
 package serial
 
 import (
@@ -8,8 +9,12 @@ import (
 	"time"
 )
 
+// Serial is a unique serial number.
 type Serial int64
 
+// Generator defines a generator of unique serial numbers. You can run any
+// number of independent generators for different serial number problem
+// domains, each with its own mutexes for thread safety.
 type Generator struct {
 	lastmutex  sync.RWMutex
 	lastSerial Serial
@@ -17,6 +22,7 @@ type Generator struct {
 	seen       map[Serial]struct{}
 }
 
+// NewGenerator creates and initializes a new serial number generator.
 func NewGenerator() *Generator {
 	gen := &Generator{}
 	gen.seenmutex.Lock()
