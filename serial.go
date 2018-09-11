@@ -72,8 +72,8 @@ func (g *Generator) ExpireSeen(agelimit time.Duration) {
 func (g *Generator) Generate() Serial {
 	g.lastmutex.Lock()
 	id := Serial(time.Now().UnixNano())
-	for id <= g.lastSerial {
-		id = id + 1
+	if id <= g.lastSerial {
+		id = g.lastSerial + 1
 	}
 	g.lastSerial = id
 	g.lastmutex.Unlock()
